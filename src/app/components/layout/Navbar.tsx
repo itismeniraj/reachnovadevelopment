@@ -202,7 +202,8 @@ export default function Navbar() {
       </Container>
 
       {/* MOBILE MENU */}
-      <div
+
+      {/* <div
         className={`overflow-hidden border-t border-[var(--border)] bg-[var(--card-bg)] transition-all duration-300 lg:hidden ${
           open
             ? "max-h-[500px] py-4 opacity-100"
@@ -290,7 +291,111 @@ export default function Navbar() {
             </button>
           </div>
         </Container>
+      </div> */}
+
+      {/* MOBILE MENU OVERLAY */}
+<div
+  className={`fixed inset-0 z-40 lg:hidden bg-black/40 backdrop-blur-sm transition-opacity duration-300 ${
+    open ? "opacity-100" : "pointer-events-none opacity-0"
+  }`}
+  onClick={closeMenu}
+>
+  {/* TOP PANEL */}
+  <div
+    onClick={(e) => e.stopPropagation()}
+    className={`w-full bg-[var(--card-bg)] border-b border-[var(--border)]
+    shadow-[0_20px_50px_rgba(0,0,0,0.15)]
+    transition-transform duration-300 ${
+      open ? "translate-y-0" : "-translate-y-full"
+    }`}
+  >
+    <Container>
+      <div className="flex flex-col gap-4 py-6">
+
+        {/* CLOSE ICON (inside menu) */}
+        <div className="flex justify-end">
+          <button
+            onClick={closeMenu}
+            className="rounded-lg p-2 text-[var(--foreground)] transition hover:bg-[var(--accent)]/10"
+          >
+            <X size={22} />
+          </button>
+        </div>
+
+        {/* MENU ITEMS */}
+        <div className="flex flex-col gap-3">
+
+          {links.map((item) => (
+            <div key={item.label}>
+              <div className="flex items-center justify-between">
+                <Link
+                  href={item.href}
+                  onClick={(e) => {
+                    e.preventDefault();
+                    closeMenu();
+                    handleScroll(item.href);
+                  }}
+                  className="block py-2 text-sm font-medium text-[var(--foreground)] hover:text-[var(--accent)]"
+                >
+                  {item.label}
+                </Link>
+
+                {item.dropdown && (
+                  <button
+                    onClick={() =>
+                      openDropdown === item.label
+                        ? hideDropdown()
+                        : showDropdown(item.label)
+                    }
+                  >
+                    <ChevronDown
+                      size={16}
+                      className={`transition duration-300 ${
+                        openDropdown === item.label
+                          ? "rotate-180 text-[var(--accent)]"
+                          : "text-[var(--foreground)]"
+                      }`}
+                    />
+                  </button>
+                )}
+              </div>
+
+              {item.dropdown &&
+                openDropdown === item.label && (
+                  <div className="ml-4 mt-2 flex flex-col gap-2 border-l border-[var(--accent)]/30 pl-3">
+                    {item.dropdown.map((sub) => (
+                      <Link
+                        key={sub.label}
+                        href={sub.href}
+                        onClick={(e) => {
+                          e.preventDefault();
+                          closeMenu();
+                          handleScroll(sub.href);
+                          hideDropdown();
+                        }}
+                        className="text-sm text-[var(--foreground-secondary)] hover:text-[var(--accent)]"
+                      >
+                        {sub.label}
+                      </Link>
+                    ))}
+                  </div>
+                )}
+            </div>
+          ))}
+
+          {/* CTA BUTTON */}
+          <button className="mt-3 flex w-full items-center justify-center gap-2 rounded-xl bg-[var(--button-bg)] py-3 text-sm font-semibold text-[var(--button-text)] transition hover:bg-[var(--button-hover)]">
+            {siteData.nav.ctaLabel}
+            <ArrowRight size={16} />
+          </button>
+
+        </div>
       </div>
+    </Container>
+  </div>
+</div>
+
+
     </header>
   );
 }

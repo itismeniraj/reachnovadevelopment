@@ -20,6 +20,11 @@ export const metadata: Metadata = {
   title: "ReachNova - Consultancy & IT Solutions",
   description:
     "ReachNova Consultancy Website built with Next.js and TypeScript",
+
+    icons :{
+      icon: "/images/logo.png",  
+      
+    }
 };
 
 export default function RootLayout({
