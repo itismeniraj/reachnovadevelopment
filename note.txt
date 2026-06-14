@@ -1,0 +1,9 @@
+1. npm install react-just-parallax  
+// yo chai animation ko lagi scrool garda hune ani mouse 
+parallax and scrollparallax yesko lagi yo use gare 
+
+ 2. framer-motion ni animation ko lagi install gare ko 
+ npm install motion
+fadeup ani thyo wala haru  ko lagi 
+
+ 
