@@ -34,7 +34,6 @@ export default function ServicesSection({ services }: any) {
     const currentY = e.touches[0].clientY;
     const diffY = touchStartY.current - currentY;
 
-    // Only block page scroll if we are actively moving between intermediate cards
     if (diffY > 10 && activeMobileIndex < services.items.length - 1) {
       if (e.cancelable) e.preventDefault();
     } else if (diffY < -10 && activeMobileIndex > 0) {
@@ -56,6 +55,8 @@ export default function ServicesSection({ services }: any) {
       setActiveMobileIndex((prev) => Math.max(0, prev - 1));
     }
   };
+
+  const mobileContainerHeight = 440 + services.items.length * 16;
 
   return (
     <section
@@ -96,7 +97,6 @@ export default function ServicesSection({ services }: any) {
         </FadeUp>
       </div>
 
-      {/* Container switches from massive tracking area to standard block height on mobile */}
       <div
         ref={containerRef}
         onTouchStart={handleTouchStart}
@@ -104,10 +104,13 @@ export default function ServicesSection({ services }: any) {
         onTouchEnd={handleTouchEnd}
         className={
           isMobile
-            ? "relative w-full max-w-5xl mx-auto h-[440px]"
+            ? "relative w-full max-w-5xl mx-auto"
             : "relative h-[140vh] sm:h-[180vh] md:h-[260vh] w-full max-w-5xl mx-auto"
         }
-        style={{ touchAction: isMobile ? "pan-x" : "auto" }}
+        style={{
+          touchAction: isMobile ? "pan-x" : "auto",
+          height: isMobile ? `${mobileContainerHeight}px` : undefined,
+        }}
       >
         <div
           className={

@@ -70,17 +70,22 @@ export const ServiceCard: React.FC<ServiceCardProps> = ({
 
   const isStackedMobile = isMobile && index <= activeMobileIndex;
 
+  const mobileStaircaseOffset = index * 20;
+
   return (
     <motion.div
       initial={
         isMobile
-          ? { y: index === 0 ? 0 : 800, opacity: index === 0 ? 1 : 0 }
+          ? {
+              y: index === 0 ? mobileStaircaseOffset : 800,
+              opacity: index === 0 ? 1 : 0,
+            }
           : false
       }
       animate={
         isMobile
           ? {
-              y: isStackedMobile ? 0 : 800,
+              y: isStackedMobile ? mobileStaircaseOffset : 800,
               opacity: isStackedMobile ? 1 : 0,
             }
           : {}
@@ -100,7 +105,6 @@ export const ServiceCard: React.FC<ServiceCardProps> = ({
             ? "brightness(100%)"
             : `brightness(${brightness})`,
         opacity: isMobile ? undefined : 1,
-        // On mobile, absolute positioning handles stack overlaps instead of negative margin layout hacks
         position: isMobile
           ? index === 0
             ? "relative"
