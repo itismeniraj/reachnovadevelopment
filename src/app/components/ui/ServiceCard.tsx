@@ -1,7 +1,13 @@
 "use client";
 
 import { ServiceItem } from "../../types/site";
-import { motion, MotionValue, useTransform } from "framer-motion";
+import {
+  motion,
+  MotionValue,
+  useMotionValue,
+  useTransform,
+  useAnimationControls,
+} from "framer-motion";
 import Image from "next/image";
 import { useEffect, useState } from "react";
 
@@ -12,6 +18,11 @@ interface ServiceCardProps {
   progress: MotionValue<number>;
 }
 
+// Global simple registry to synchronize touch events sequentially across mobile cards
+const mobileCardRegistry = {
+  activeCardIndex: 1, // Card 0 is instantly visible; Card 1 waits for input
+};
+
 export const ServiceCard: React.FC<ServiceCardProps> = ({
   item,
   index,
@@ -20,6 +31,11 @@ export const ServiceCard: React.FC<ServiceCardProps> = ({
 }) => {
   const [mounted, setMounted] = useState(false);
   const [isMobile, setIsMobile] = useState(false);
+  const [isMobileStacked, setIsMobileStacked] = useState(false);
+
+  // Setup motion tracking values and animation states for touch handling
+  const dragY = useMotionValue(0);
+  const controls = useAnimationControls();
 
   useEffect(() => {
     setMounted(true);
@@ -32,46 +48,61 @@ export const ServiceCard: React.FC<ServiceCardProps> = ({
     return () => window.removeEventListener("resize", handleResize);
   }, []);
 
-  // Calculate chronological progress splits per card step
+  // Desktop setup values
   const startRange = index / totalServiceCards;
   const endRange = (index + 1) / totalServiceCards;
+  const desktopStartingY = 600;
 
-  // Initial drop point offset before scroll trigger execution
-  const startingYPosition = isMobile ? 300 : 600;
-
-  const y = useTransform(
+  const desktopY = useTransform(
     progress,
     [0, startRange, Math.min(1, endRange)],
-    [startingYPosition, startingYPosition, 0],
-  );
-
-  // Strict Sequential Guard Loop:
-  // Next card opacity remains completely hidden (0) until the current card
-  // is nearly complete with its motion layout transit sequence.
-  const mobileOpacity = useTransform(
-    progress,
-    [
-      startRange,
-      startRange + (endRange - startRange) * 0.45, // Holds invisible through 45% of its timeline range
-      Math.min(1, endRange),
-      1,
-    ],
-    [0, 0, 1, 1], // Becomes fully visible and holds solid '1' through all subsequent cards
+    [desktopStartingY, desktopStartingY, 0],
   );
 
   const finalScale = 1 - (totalServiceCards - 1 - index) * 0.03;
-
   const scale = useTransform(
     progress,
     [endRange, endRange + 0.1],
     [1, finalScale],
   );
-
   const brightness = useTransform(
     progress,
     [endRange, endRange + 0.1],
     ["100%", "75%"],
   );
+
+  // Mobile gesture mapping engine:
+  // Card starts lowered at 340px offset. As the user drags upward towards 0, opacity scales to 1.
+  const mobileOpacityRange = useTransform(dragY, [340, 60], [0, 1]);
+
+  const handleDragEnd = async (_event: any, info: any) => {
+    // Check if the gesture meets velocity or distance thresholds to lock into the stack
+    if (info.offset.y < -100 || info.velocity.y < -150) {
+      await controls.start({
+        y: 0,
+        transition: { type: "spring", stiffness: 300, damping: 25 },
+      });
+      setIsMobileStacked(true);
+
+      // Unlock the gesture interaction for the next card below this one
+      mobileCardRegistry.activeCardIndex = index + 1;
+    } else {
+      // Spring back out of view if the gesture wasn't strong enough
+      controls.start({
+        y: 340,
+        transition: { type: "spring", stiffness: 200, damping: 20 },
+      });
+    }
+  };
+
+  // Reset parameters cleanly if viewport switches or resets
+  useEffect(() => {
+    if (isMobile && index > 0 && !isMobileStacked) {
+      controls.set({ y: 340 });
+    } else {
+      controls.set({ y: 0 });
+    }
+  }, [isMobile, controls, index, isMobileStacked]);
 
   if (!mounted) {
     return (
@@ -85,30 +116,54 @@ export const ServiceCard: React.FC<ServiceCardProps> = ({
     );
   }
 
+  // Determine whether this card is currently allowed to accept user slide-up input
+  const canDragOnMobile =
+    isMobile &&
+    index === mobileCardRegistry.activeCardIndex &&
+    !isMobileStacked;
+
   return (
     <motion.div
+      drag={canDragOnMobile ? "y" : false}
+      dragConstraints={{ top: 0, bottom: 340 }}
+      dragElastic={{ top: 0.05, bottom: 0.1 }}
+      dragMomentum={false}
+      onDragEnd={handleDragEnd}
+      animate={controls}
       style={{
-        y: index === 0 ? 0 : y,
-        scale: index === totalServiceCards - 1 ? 1 : scale,
-        filter:
-          index === totalServiceCards - 1
+        // Use gesture values for mobile touch, fallback to desktop scroll transformations
+        y: isMobile ? undefined : index === 0 ? 0 : desktopY,
+        _dragY: isMobile ? dragY : undefined,
+
+        scale: isMobile ? 1 : index === totalServiceCards - 1 ? 1 : scale,
+        filter: isMobile
+          ? "brightness(100%)"
+          : index === totalServiceCards - 1
             ? "brightness(100%)"
             : `brightness(${brightness})`,
 
-        // Apply strict sequential visibility rules to trailing components
-        opacity: isMobile ? (index === 0 ? 1 : mobileOpacity) : 1,
+        // Base Visibility: Card 0 is fully visible, others fade in cleanly using gesture calculations
+        opacity: isMobile
+          ? index === 0
+            ? 1
+            : isMobileStacked
+              ? 1
+              : mobileOpacityRange
+          : 1,
 
-        // Clean stacked overlap configuration
         marginTop: index === 0 ? 0 : "-420px",
         paddingTop: 0,
+        touchAction: isMobile ? "pan-x" : "auto",
 
         backgroundColor: "var(--services-card-bg)",
         border: "1px solid var(--services-card-border)",
       }}
-      className="w-full min-h-[420px] md:h-[460px] rounded-3xl flex flex-col md:flex-row overflow-hidden shadow-[0_25px_60px_-20px_rgba(29,49,115,0.25)] origin-top"
+      className={`w-full min-h-[420px] md:h-[460px] rounded-3xl flex flex-col md:flex-row overflow-hidden shadow-[0_25px_60px_-20px_rgba(29,49,115,0.25)] origin-top ${
+        canDragOnMobile ? "cursor-grab active:cursor-grabbing" : ""
+      }`}
     >
       {/* IMAGE */}
-      <div className="relative w-full md:w-1/2 h-60 md:h-full">
+      <div className="relative w-full md:w-1/2 h-60 md:h-full select-none pointer-events-none">
         <Image
           src={item.image}
           alt={item.title}
@@ -117,24 +172,17 @@ export const ServiceCard: React.FC<ServiceCardProps> = ({
           className="object-cover"
           sizes="(max-width: 768px) 100vw, 50vw"
         />
-
         <div
           className="absolute inset-0"
           style={{
-            background: `
-              linear-gradient(
-                to top right,
-                var(--services-overlay),
-                transparent
-              )
-            `,
+            background: `linear-gradient(to top right, var(--services-overlay), transparent)`,
           }}
         />
       </div>
 
       {/* CONTENT */}
       <div
-        className="w-full md:w-1/2 flex flex-col justify-center p-6 sm:p-8 md:p-10 lg:p-12"
+        className="w-full md:w-1/2 flex flex-col justify-center p-6 sm:p-8 md:p-10 lg:p-12 select-none"
         style={{
           backgroundColor: "var(--services-card-bg)",
         }}
@@ -142,18 +190,14 @@ export const ServiceCard: React.FC<ServiceCardProps> = ({
         <div>
           <h3
             className="text-2xl sm:text-3xl md:text-4xl font-bold leading-tight"
-            style={{
-              color: "var(--services-title)",
-            }}
+            style={{ color: "var(--services-title)" }}
           >
             {item.title}
           </h3>
 
           <p
             className="mt-4 text-sm sm:text-base md:text-lg leading-relaxed"
-            style={{
-              color: "var(--services-text)",
-            }}
+            style={{ color: "var(--services-text)" }}
           >
             {item.description}
           </p>
@@ -179,7 +223,6 @@ export const ServiceCard: React.FC<ServiceCardProps> = ({
     </motion.div>
   );
 };
-
 // "use client";
 
 // import { ServiceItem } from "../../types/site";

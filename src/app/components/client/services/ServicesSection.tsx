@@ -79,7 +79,6 @@ export default function ServicesSection({ services }: any) {
         ref={containerRef}
         className="relative h-[140vh] sm:h-[180vh] md:h-[260vh] w-full max-w-5xl mx-auto"
       >
-        {/* Sticky viewport frame container */}
         <div className="sticky top-[80px] md:top-[110px] w-full flex flex-col items-center">
           {services.items.map((item: any, index: number) => (
             <div
@@ -102,6 +101,7 @@ export default function ServicesSection({ services }: any) {
     </section>
   );
 }
+
 // "use client";
 
 // import { useRef } from "react";
