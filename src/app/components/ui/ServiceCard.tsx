@@ -32,10 +32,11 @@ export const ServiceCard: React.FC<ServiceCardProps> = ({
     return () => window.removeEventListener("resize", handleResize);
   }, []);
 
+  // Calculate chronological progress splits per card step
   const startRange = index / totalServiceCards;
   const endRange = (index + 1) / totalServiceCards;
 
-  // for mobile
+  // Initial drop point offset before scroll trigger execution
   const startingYPosition = isMobile ? 300 : 600;
 
   const y = useTransform(
@@ -44,10 +45,18 @@ export const ServiceCard: React.FC<ServiceCardProps> = ({
     [startingYPosition, startingYPosition, 0],
   );
 
+  // Strict Sequential Guard Loop:
+  // Next card opacity remains completely hidden (0) until the current card
+  // is nearly complete with its motion layout transit sequence.
   const mobileOpacity = useTransform(
     progress,
-    [Math.max(0, startRange - 0.05), Math.min(1, startRange + 0.02), 1],
-    [0, 1, 1],
+    [
+      startRange,
+      startRange + (endRange - startRange) * 0.45, // Holds invisible through 45% of its timeline range
+      Math.min(1, endRange),
+      1,
+    ],
+    [0, 0, 1, 1], // Becomes fully visible and holds solid '1' through all subsequent cards
   );
 
   const finalScale = 1 - (totalServiceCards - 1 - index) * 0.03;
@@ -86,10 +95,10 @@ export const ServiceCard: React.FC<ServiceCardProps> = ({
             ? "brightness(100%)"
             : `brightness(${brightness})`,
 
-        // The fix: Card 0 is instantly visible; subsequent cards use the smooth scroll fade-in
+        // Apply strict sequential visibility rules to trailing components
         opacity: isMobile ? (index === 0 ? 1 : mobileOpacity) : 1,
 
-        // Keeping your negative margin stacking approach untouched
+        // Clean stacked overlap configuration
         marginTop: index === 0 ? 0 : "-420px",
         paddingTop: 0,
 
