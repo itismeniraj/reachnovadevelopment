@@ -1,13 +1,7 @@
 "use client";
 
 import { ServiceItem } from "../../types/site";
-import {
-  motion,
-  MotionValue,
-  useMotionValue,
-  useTransform,
-  useAnimationControls,
-} from "framer-motion";
+import { motion, MotionValue, useTransform } from "framer-motion";
 import Image from "next/image";
 import { useEffect, useState } from "react";
 
@@ -17,7 +11,6 @@ interface ServiceCardProps {
   totalServiceCards: number;
   progress: MotionValue<number>;
   activeMobileIndex: number;
-  setActiveMobileIndex: React.Dispatch<React.SetStateAction<number>>;
 }
 
 export const ServiceCard: React.FC<ServiceCardProps> = ({
@@ -26,14 +19,9 @@ export const ServiceCard: React.FC<ServiceCardProps> = ({
   totalServiceCards,
   progress,
   activeMobileIndex,
-  setActiveMobileIndex,
 }) => {
   const [mounted, setMounted] = useState(false);
   const [isMobile, setIsMobile] = useState(false);
-  const [isMobileStacked, setIsMobileStacked] = useState(false);
-
-  const dragY = useMotionValue(340);
-  const controls = useAnimationControls();
 
   useEffect(() => {
     setMounted(true);
@@ -68,40 +56,6 @@ export const ServiceCard: React.FC<ServiceCardProps> = ({
     ["100%", "75%"],
   );
 
-  const mobileOpacityRange = useTransform(dragY, [340, 60], [0, 1]);
-
-  const handleDragEnd = async (_event: any, info: any) => {
-    if (info.offset.y < -60 || info.velocity.y < -100) {
-      await controls.start({
-        y: 0,
-        transition: { type: "spring", stiffness: 300, damping: 25 },
-      });
-      dragY.set(0);
-      setIsMobileStacked(true);
-      setActiveMobileIndex(index + 1);
-    } else {
-      controls.start({
-        y: 340,
-        transition: { type: "spring", stiffness: 200, damping: 20 },
-      });
-      dragY.set(340);
-    }
-  };
-
-  useEffect(() => {
-    if (isMobile) {
-      if (index === 0 || isMobileStacked) {
-        controls.set({ y: 0 });
-        dragY.set(0);
-      } else {
-        controls.set({ y: 340 });
-        dragY.set(340);
-      }
-    } else {
-      controls.set({ y: 0 });
-    }
-  }, [isMobile, controls, index, isMobileStacked, dragY]);
-
   if (!mounted) {
     return (
       <div
@@ -114,19 +68,25 @@ export const ServiceCard: React.FC<ServiceCardProps> = ({
     );
   }
 
-  const canDragOnMobile =
-    isMobile && index === activeMobileIndex && !isMobileStacked;
-  const showOnMobile =
-    index === 0 || isMobileStacked || index === activeMobileIndex;
+  const isStackedMobile = isMobile && index <= activeMobileIndex;
 
   return (
     <motion.div
-      drag={canDragOnMobile ? "y" : false}
-      dragConstraints={{ top: 0, bottom: 340 }}
-      dragElastic={{ top: 0.05, bottom: 0.1 }}
-      dragMomentum={false}
-      onDragEnd={handleDragEnd}
-      animate={controls}
+      initial={false}
+      animate={
+        isMobile
+          ? {
+              y: isStackedMobile ? 0 : 600,
+              opacity: isStackedMobile ? 1 : 0,
+            }
+          : {}
+      }
+      transition={{
+        type: "spring",
+        stiffness: 220,
+        damping: 26,
+        mass: 0.8,
+      }}
       style={{
         y: isMobile ? undefined : index === 0 ? 0 : desktopY,
         scale: isMobile ? 1 : index === totalServiceCards - 1 ? 1 : scale,
@@ -135,22 +95,13 @@ export const ServiceCard: React.FC<ServiceCardProps> = ({
           : index === totalServiceCards - 1
             ? "brightness(100%)"
             : `brightness(${brightness})`,
-        opacity: isMobile
-          ? showOnMobile
-            ? index === 0 || isMobileStacked
-              ? 1
-              : mobileOpacityRange
-            : 0
-          : 1,
+        opacity: isMobile ? undefined : 1,
         marginTop: index === 0 ? 0 : "-420px",
         paddingTop: 0,
-        touchAction: canDragOnMobile ? "none" : "auto",
         backgroundColor: "var(--services-card-bg)",
         border: "1px solid var(--services-card-border)",
       }}
-      className={`w-full min-h-[420px] md:h-[460px] rounded-3xl flex flex-col md:flex-row overflow-hidden shadow-[0_25px_60px_-20px_rgba(29,49,115,0.25)] origin-top ${
-        canDragOnMobile ? "cursor-grab active:cursor-grabbing" : ""
-      }`}
+      className="w-full min-h-[420px] md:h-[460px] rounded-3xl flex flex-col md:flex-row overflow-hidden shadow-[0_25px_60px_-20px_rgba(29,49,115,0.25)] origin-top"
     >
       <div className="relative w-full md:w-1/2 h-60 md:h-full select-none pointer-events-none">
         <Image

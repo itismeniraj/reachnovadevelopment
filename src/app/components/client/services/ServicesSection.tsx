@@ -8,7 +8,8 @@ import FadeUp from "../../animations/FadeUp";
 export default function ServicesSection({ services }: any) {
   const containerRef = useRef<HTMLDivElement>(null);
   const [isMobile, setIsMobile] = useState(false);
-  const [activeMobileIndex, setActiveMobileIndex] = useState(1);
+  const [activeMobileIndex, setActiveMobileIndex] = useState(0);
+  const touchStartY = useRef(0);
 
   useEffect(() => {
     const handleResize = () => setIsMobile(window.innerWidth < 768);
@@ -21,6 +22,38 @@ export default function ServicesSection({ services }: any) {
     target: containerRef,
     offset: ["start start", "end end"],
   });
+
+  const handleTouchStart = (e: React.TouchEvent) => {
+    if (!isMobile) return;
+    touchStartY.current = e.touches[0].clientY;
+  };
+
+  const handleTouchMove = (e: React.TouchEvent) => {
+    if (!isMobile) return;
+    if (activeMobileIndex >= services.items.length - 1) return;
+
+    const currentY = e.touches[0].clientY;
+    const diffY = touchStartY.current - currentY;
+
+    if (diffY > 10 && e.cancelable) {
+      e.preventDefault();
+    }
+  };
+
+  const handleTouchEnd = (e: React.TouchEvent) => {
+    if (!isMobile) return;
+
+    const currentY = e.changedTouches[0].clientY;
+    const diffY = touchStartY.current - currentY;
+
+    if (diffY > 40) {
+      setActiveMobileIndex((prev) =>
+        Math.min(services.items.length - 1, prev + 1),
+      );
+    } else if (diffY < -40) {
+      setActiveMobileIndex((prev) => Math.max(0, prev - 1));
+    }
+  };
 
   return (
     <section
@@ -63,7 +96,14 @@ export default function ServicesSection({ services }: any) {
 
       <div
         ref={containerRef}
+        onTouchStart={handleTouchStart}
+        onTouchMove={handleTouchMove}
+        onTouchEnd={handleTouchEnd}
         className="relative h-[140vh] sm:h-[180vh] md:h-[260vh] w-full max-w-5xl mx-auto"
+        style={{
+          touchAction:
+            activeMobileIndex < services.items.length - 1 ? "none" : "auto",
+        }}
       >
         <div className="sticky top-[80px] md:top-[110px] w-full flex flex-col items-center">
           {services.items.map((item: any, index: number) => (
@@ -74,7 +114,6 @@ export default function ServicesSection({ services }: any) {
                 totalServiceCards={services.items.length}
                 progress={scrollYProgress}
                 activeMobileIndex={activeMobileIndex}
-                setActiveMobileIndex={setActiveMobileIndex}
               />
             </div>
           ))}
