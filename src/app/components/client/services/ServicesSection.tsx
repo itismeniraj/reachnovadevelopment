@@ -30,13 +30,15 @@ export default function ServicesSection({ services }: any) {
 
   const handleTouchMove = (e: React.TouchEvent) => {
     if (!isMobile) return;
-    if (activeMobileIndex >= services.items.length - 1) return;
 
     const currentY = e.touches[0].clientY;
     const diffY = touchStartY.current - currentY;
 
-    if (diffY > 10 && e.cancelable) {
-      e.preventDefault();
+    // Only block page scroll if we are actively moving between intermediate cards
+    if (diffY > 10 && activeMobileIndex < services.items.length - 1) {
+      if (e.cancelable) e.preventDefault();
+    } else if (diffY < -10 && activeMobileIndex > 0) {
+      if (e.cancelable) e.preventDefault();
     }
   };
 
@@ -94,18 +96,26 @@ export default function ServicesSection({ services }: any) {
         </FadeUp>
       </div>
 
+      {/* Container switches from massive tracking area to standard block height on mobile */}
       <div
         ref={containerRef}
         onTouchStart={handleTouchStart}
         onTouchMove={handleTouchMove}
         onTouchEnd={handleTouchEnd}
-        className="relative h-[140vh] sm:h-[180vh] md:h-[260vh] w-full max-w-5xl mx-auto"
-        style={{
-          touchAction:
-            activeMobileIndex < services.items.length - 1 ? "none" : "auto",
-        }}
+        className={
+          isMobile
+            ? "relative w-full max-w-5xl mx-auto h-[440px]"
+            : "relative h-[140vh] sm:h-[180vh] md:h-[260vh] w-full max-w-5xl mx-auto"
+        }
+        style={{ touchAction: isMobile ? "pan-x" : "auto" }}
       >
-        <div className="sticky top-[80px] md:top-[110px] w-full flex flex-col items-center">
+        <div
+          className={
+            isMobile
+              ? "relative w-full flex flex-col items-center"
+              : "sticky top-[80px] md:top-[110px] w-full flex flex-col items-center"
+          }
+        >
           {services.items.map((item: any, index: number) => (
             <div key={item.id} className="w-full" style={{ zIndex: index }}>
               <ServiceCard

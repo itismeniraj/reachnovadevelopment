@@ -92,7 +92,6 @@ export const ServiceCard: React.FC<ServiceCardProps> = ({
         mass: 1,
       }}
       style={{
-        // FIX: Strip y out completely for mobile viewports to prevent style object collision
         ...(isMobile ? {} : { y: index === 0 ? 0 : desktopY }),
         scale: isMobile ? 1 : index === totalServiceCards - 1 ? 1 : scale,
         filter: isMobile
@@ -101,7 +100,15 @@ export const ServiceCard: React.FC<ServiceCardProps> = ({
             ? "brightness(100%)"
             : `brightness(${brightness})`,
         opacity: isMobile ? undefined : 1,
-        marginTop: index === 0 ? 0 : "-420px",
+        // On mobile, absolute positioning handles stack overlaps instead of negative margin layout hacks
+        position: isMobile
+          ? index === 0
+            ? "relative"
+            : "absolute"
+          : "relative",
+        top: isMobile ? 0 : undefined,
+        left: isMobile ? 0 : undefined,
+        marginTop: isMobile ? 0 : index === 0 ? 0 : "-420px",
         paddingTop: 0,
         backgroundColor: "var(--services-card-bg)",
         border: "1px solid var(--services-card-border)",
