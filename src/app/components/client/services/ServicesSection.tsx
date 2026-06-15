@@ -8,6 +8,7 @@ import FadeUp from "../../animations/FadeUp";
 export default function ServicesSection({ services }: any) {
   const containerRef = useRef<HTMLDivElement>(null);
   const [isMobile, setIsMobile] = useState(false);
+  const [activeMobileIndex, setActiveMobileIndex] = useState(1);
 
   useEffect(() => {
     const handleResize = () => setIsMobile(window.innerWidth < 768);
@@ -72,6 +73,8 @@ export default function ServicesSection({ services }: any) {
                 index={index}
                 totalServiceCards={services.items.length}
                 progress={scrollYProgress}
+                activeMobileIndex={activeMobileIndex}
+                setActiveMobileIndex={setActiveMobileIndex}
               />
             </div>
           ))}

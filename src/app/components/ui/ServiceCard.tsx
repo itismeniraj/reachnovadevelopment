@@ -16,23 +16,23 @@ interface ServiceCardProps {
   index: number;
   totalServiceCards: number;
   progress: MotionValue<number>;
+  activeMobileIndex: number;
+  setActiveMobileIndex: React.Dispatch<React.SetStateAction<number>>;
 }
-
-const mobileCardRegistry = {
-  activeCardIndex: 1,
-};
 
 export const ServiceCard: React.FC<ServiceCardProps> = ({
   item,
   index,
   totalServiceCards,
   progress,
+  activeMobileIndex,
+  setActiveMobileIndex,
 }) => {
   const [mounted, setMounted] = useState(false);
   const [isMobile, setIsMobile] = useState(false);
   const [isMobileStacked, setIsMobileStacked] = useState(false);
 
-  const dragY = useMotionValue(0);
+  const dragY = useMotionValue(340);
   const controls = useAnimationControls();
 
   useEffect(() => {
@@ -71,28 +71,36 @@ export const ServiceCard: React.FC<ServiceCardProps> = ({
   const mobileOpacityRange = useTransform(dragY, [340, 60], [0, 1]);
 
   const handleDragEnd = async (_event: any, info: any) => {
-    if (info.offset.y < -100 || info.velocity.y < -150) {
+    if (info.offset.y < -60 || info.velocity.y < -100) {
       await controls.start({
         y: 0,
         transition: { type: "spring", stiffness: 300, damping: 25 },
       });
+      dragY.set(0);
       setIsMobileStacked(true);
-      mobileCardRegistry.activeCardIndex = index + 1;
+      setActiveMobileIndex(index + 1);
     } else {
       controls.start({
         y: 340,
         transition: { type: "spring", stiffness: 200, damping: 20 },
       });
+      dragY.set(340);
     }
   };
 
   useEffect(() => {
-    if (isMobile && index > 0 && !isMobileStacked) {
-      controls.set({ y: 340 });
+    if (isMobile) {
+      if (index === 0 || isMobileStacked) {
+        controls.set({ y: 0 });
+        dragY.set(0);
+      } else {
+        controls.set({ y: 340 });
+        dragY.set(340);
+      }
     } else {
       controls.set({ y: 0 });
     }
-  }, [isMobile, controls, index, isMobileStacked]);
+  }, [isMobile, controls, index, isMobileStacked, dragY]);
 
   if (!mounted) {
     return (
@@ -107,9 +115,9 @@ export const ServiceCard: React.FC<ServiceCardProps> = ({
   }
 
   const canDragOnMobile =
-    isMobile &&
-    index === mobileCardRegistry.activeCardIndex &&
-    !isMobileStacked;
+    isMobile && index === activeMobileIndex && !isMobileStacked;
+  const showOnMobile =
+    index === 0 || isMobileStacked || index === activeMobileIndex;
 
   return (
     <motion.div
@@ -128,15 +136,15 @@ export const ServiceCard: React.FC<ServiceCardProps> = ({
             ? "brightness(100%)"
             : `brightness(${brightness})`,
         opacity: isMobile
-          ? index === 0
-            ? 1
-            : isMobileStacked
+          ? showOnMobile
+            ? index === 0 || isMobileStacked
               ? 1
               : mobileOpacityRange
+            : 0
           : 1,
         marginTop: index === 0 ? 0 : "-420px",
         paddingTop: 0,
-        touchAction: isMobile ? "pan-x" : "auto",
+        touchAction: canDragOnMobile ? "none" : "auto",
         backgroundColor: "var(--services-card-bg)",
         border: "1px solid var(--services-card-border)",
       }}
