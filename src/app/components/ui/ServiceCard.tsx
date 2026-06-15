@@ -19,18 +19,35 @@ export const ServiceCard: React.FC<ServiceCardProps> = ({
   progress,
 }) => {
   const [mounted, setMounted] = useState(false);
+  const [isMobile, setIsMobile] = useState(false);
 
   useEffect(() => {
     setMounted(true);
   }, []);
 
+  useEffect(() => {
+    const handleResize = () => setIsMobile(window.innerWidth < 768);
+    handleResize();
+    window.addEventListener("resize", handleResize);
+    return () => window.removeEventListener("resize", handleResize);
+  }, []);
+
   const startRange = index / totalServiceCards;
   const endRange = (index + 1) / totalServiceCards;
+
+  // for mobile
+  const startingYPosition = isMobile ? 300 : 600;
 
   const y = useTransform(
     progress,
     [0, startRange, Math.min(1, endRange)],
-    [800, 600, 0]
+    [startingYPosition, startingYPosition, 0],
+  );
+
+  const mobileOpacity = useTransform(
+    progress,
+    [Math.max(0, startRange - 0.05), Math.min(1, startRange + 0.02), 1],
+    [0, 1, 1],
   );
 
   const finalScale = 1 - (totalServiceCards - 1 - index) * 0.03;
@@ -38,13 +55,13 @@ export const ServiceCard: React.FC<ServiceCardProps> = ({
   const scale = useTransform(
     progress,
     [endRange, endRange + 0.1],
-    [1, finalScale]
+    [1, finalScale],
   );
 
   const brightness = useTransform(
     progress,
     [endRange, endRange + 0.1],
-    ["100%", "75%"]
+    ["100%", "75%"],
   );
 
   if (!mounted) {
@@ -68,6 +85,11 @@ export const ServiceCard: React.FC<ServiceCardProps> = ({
           index === totalServiceCards - 1
             ? "brightness(100%)"
             : `brightness(${brightness})`,
+
+        // The fix: Card 0 is instantly visible; subsequent cards use the smooth scroll fade-in
+        opacity: isMobile ? (index === 0 ? 1 : mobileOpacity) : 1,
+
+        // Keeping your negative margin stacking approach untouched
         marginTop: index === 0 ? 0 : "-420px",
         paddingTop: 0,
 
@@ -148,12 +170,6 @@ export const ServiceCard: React.FC<ServiceCardProps> = ({
     </motion.div>
   );
 };
-
-
-
-
-
-
 
 // "use client";
 
@@ -269,18 +285,7 @@ export const ServiceCard: React.FC<ServiceCardProps> = ({
 //   );
 // };
 
-
-
-
-
-
-
-
-
-
-
 // yo lai na hataune
-
 
 // import { ServiceItem } from "../../types/site";
 // import { motion, MotionValue, useTransform } from "framer-motion";
@@ -367,20 +372,6 @@ export const ServiceCard: React.FC<ServiceCardProps> = ({
 //     </div>
 //   );
 // };
-
-
-
-
-
-
-
-
-
-
-
-
-
-
 
 // import { ServiceItem } from "../../types/site";
 // import { motion, MotionValue, useTransform } from "framer-motion";

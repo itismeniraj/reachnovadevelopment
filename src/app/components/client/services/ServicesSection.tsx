@@ -1,12 +1,20 @@
 "use client";
 
-import { useRef } from "react";
+import { useEffect, useRef, useState } from "react";
 import { useScroll } from "framer-motion";
 import { ServiceCard } from "../../ui/ServiceCard";
 import FadeUp from "../../animations/FadeUp";
 
 export default function ServicesSection({ services }: any) {
   const containerRef = useRef<HTMLDivElement>(null);
+  const [isMobile, setIsMobile] = useState(false);
+
+  useEffect(() => {
+    const handleResize = () => setIsMobile(window.innerWidth < 768);
+    handleResize();
+    window.addEventListener("resize", handleResize);
+    return () => window.removeEventListener("resize", handleResize);
+  }, []);
 
   const { scrollYProgress } = useScroll({
     target: containerRef,
@@ -69,26 +77,31 @@ export default function ServicesSection({ services }: any) {
       {/* SCROLL AREA */}
       <div
         ref={containerRef}
-        className="relative h-[260vh] max-w-5xl mx-auto"
+        className="relative h-[140vh] sm:h-[180vh] md:h-[260vh] w-full max-w-5xl mx-auto"
       >
-        <div className="sticky top-[110px] flex flex-col items-center">
+        {/* Restored clean flex container layout for stacking setup */}
+        <div className="sticky top-[80px] md:top-[110px] w-full flex flex-col items-center">
           {services.items.map((item: any, index: number) => (
-            <ServiceCard
+            <div
               key={item.id}
-              item={item}
-              index={index}
-              totalServiceCards={services.items.length}
-              progress={scrollYProgress}
-            />
+              className="w-full"
+              style={{
+                zIndex: index,
+              }}
+            >
+              <ServiceCard
+                item={item}
+                index={index}
+                totalServiceCards={services.items.length}
+                progress={scrollYProgress}
+              />
+            </div>
           ))}
         </div>
       </div>
     </section>
   );
 }
-
-
-
 
 // "use client";
 
