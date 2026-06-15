@@ -72,23 +72,28 @@ export const ServiceCard: React.FC<ServiceCardProps> = ({
 
   return (
     <motion.div
-      initial={false}
+      initial={
+        isMobile
+          ? { y: index === 0 ? 0 : 800, opacity: index === 0 ? 1 : 0 }
+          : false
+      }
       animate={
         isMobile
           ? {
-              y: isStackedMobile ? 0 : 600,
+              y: isStackedMobile ? 0 : 800,
               opacity: isStackedMobile ? 1 : 0,
             }
           : {}
       }
       transition={{
         type: "spring",
-        stiffness: 220,
-        damping: 26,
-        mass: 0.8,
+        stiffness: 240,
+        damping: 28,
+        mass: 1,
       }}
       style={{
-        y: isMobile ? undefined : index === 0 ? 0 : desktopY,
+        // FIX: Strip y out completely for mobile viewports to prevent style object collision
+        ...(isMobile ? {} : { y: index === 0 ? 0 : desktopY }),
         scale: isMobile ? 1 : index === totalServiceCards - 1 ? 1 : scale,
         filter: isMobile
           ? "brightness(100%)"
