@@ -1,29 +1,65 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
-import { useScroll, useSpring } from "framer-motion";
+import {
+  useScroll,
+  useMotionValue,
+  useVelocity,
+  useAnimationFrame,
+} from "framer-motion";
 import { ServiceCard } from "../../ui/ServiceCard";
 import FadeUp from "../../animations/FadeUp";
 
 export default function ServicesSection({ services }: any) {
   const containerRef = useRef<HTMLDivElement>(null);
   const [mounted, setMounted] = useState(false);
+  const [isMobile, setIsMobile] = useState(false);
 
   useEffect(() => {
     setMounted(true);
+    const handleResize = () => setIsMobile(window.innerWidth < 768);
+    handleResize();
+    window.addEventListener("resize", handleResize);
+    return () => window.removeEventListener("resize", handleResize);
   }, []);
 
-  // Stable scroll progress
+  // 1. Get raw scroll progress
   const { scrollYProgress } = useScroll({
     target: containerRef,
     offset: ["start start", "end end"],
   });
 
-  // Smooth but NOT self-running animation
-  const progress = useSpring(scrollYProgress, {
-    stiffness: 90,
-    damping: 25,
-    mass: 0.2,
+  // 2. Custom throttle container for mobile velocity control
+  const throttledProgress = useMotionValue(0);
+  const scrollVelocity = useVelocity(scrollYProgress);
+
+  useAnimationFrame((_, delta) => {
+    const raw = scrollYProgress.get();
+    const currentThrottled = throttledProgress.get();
+
+    if (!isMobile) {
+      // Desktop bypass: Keep standard native behavior
+      throttledProgress.set(raw);
+      return;
+    }
+
+    const diff = raw - currentThrottled;
+    if (Math.abs(diff) < 0.001) {
+      throttledProgress.set(raw);
+      return;
+    }
+
+    // Capture speed data and set a maximum progress jump per frame (Delta target calculation)
+    const velocity = Math.abs(scrollVelocity.get());
+    const isBlastScrolling = velocity > 1.5;
+
+    // Strict speed limits: forces a beautiful, steady interpolation transition even under fast flicks
+    const maxStepPerFrame = isBlastScrolling ? 0.008 : 0.02;
+    const step =
+      Math.sign(diff) *
+      Math.min(Math.abs(diff), maxStepPerFrame * (delta / 16.66));
+
+    throttledProgress.set(currentThrottled + step);
   });
 
   return (
@@ -59,12 +95,13 @@ export default function ServicesSection({ services }: any) {
         </FadeUp>
 
         <FadeUp>
-          <p style={{ color: "var(--services-text)" }}>
+          <p className="mt-5" style={{ color: "var(--services-text)" }}>
             {services.description}
           </p>
         </FadeUp>
       </div>
 
+      {/* Sticky Scroll Container Track */}
       <div
         ref={containerRef}
         className="relative h-[220vh] sm:h-[240vh] md:h-[300vh] w-full max-w-5xl mx-auto"
@@ -77,7 +114,7 @@ export default function ServicesSection({ services }: any) {
                   item={item}
                   index={index}
                   totalServiceCards={services.items.length}
-                  progress={progress}
+                  progress={throttledProgress} // Fed controlled timeline progress instead of erratic scrolling jumps
                 />
               </div>
             ))}
