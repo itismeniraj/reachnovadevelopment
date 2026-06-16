@@ -21,16 +21,14 @@ export const ServiceCard: React.FC<ServiceCardProps> = ({
   const startRange = index * cardSize;
   const endRange = (index + 1) * cardSize;
 
-  const STAIRCASE_OFFSET = 18; // px each card peeks above the next
+  const STAIRCASE_OFFSET = 18;
 
-  // Slide up from below into stacked position
   const y = useTransform(
     progress,
     [Math.max(0, startRange - cardSize), startRange],
     ["700px", `${index * STAIRCASE_OFFSET}px`],
   );
 
-  // Scale down as later cards stack on top
   const scale = useTransform(
     progress,
     [endRange, Math.min(1, endRange + cardSize)],
@@ -56,7 +54,6 @@ export const ServiceCard: React.FC<ServiceCardProps> = ({
         right: 0,
         zIndex: index,
         transformOrigin: "top center",
-        // First card starts already in place, rest slide up
         y: index === 0 ? `${index * STAIRCASE_OFFSET}px` : y,
         scale: index === totalServiceCards - 1 ? 1 : scale,
         filter,
