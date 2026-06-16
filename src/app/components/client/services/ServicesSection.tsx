@@ -4,67 +4,67 @@ import { useEffect, useRef, useState } from "react";
 import {
   useScroll,
   useMotionValue,
-  useVelocity,
+  useSpring,
   useAnimationFrame,
-  animate,
 } from "framer-motion";
 import { ServiceCard } from "../../ui/ServiceCard";
 import FadeUp from "../../animations/FadeUp";
 
-// Import Swiper for our mobile event interceptor
-import { Swiper, SwiperSlide } from "swiper/react";
-import { Mousewheel } from "swiper/modules";
-import "swiper/css";
-
 export default function ServicesSection({ services }: any) {
   const containerRef = useRef<HTMLDivElement>(null);
   const [mounted, setMounted] = useState(false);
-  const [isMobile, setIsMobile] = useState(false);
+
+  const totalCards = services?.items?.length || 1;
 
   useEffect(() => {
     setMounted(true);
-    const handleResize = () => setIsMobile(window.innerWidth < 768);
-    handleResize();
-    window.addEventListener("resize", handleResize);
-    return () => window.removeEventListener("resize", handleResize);
   }, []);
 
-  // Native desktop scrolling track progress
   const { scrollYProgress } = useScroll({
     target: containerRef,
     offset: ["start start", "end end"],
   });
 
-  // The unified timeline variable fed straight to your original card logic
-  const throttledProgress = useMotionValue(0);
+  // Snap progress: advances one card threshold at a time
+  const snappedProgress = useMotionValue(0);
+  const lastRaw = useRef(0);
+  const currentSnap = useRef(0);
 
-  // Desktop bypass loop
   useAnimationFrame(() => {
-    if (!isMobile) {
-      throttledProgress.set(scrollYProgress.get());
+    const raw = scrollYProgress.get();
+    const delta = raw - lastRaw.current;
+    lastRaw.current = raw;
+
+    if (Math.abs(delta) < 0.0001) return;
+
+    const cardSize = 1 / totalCards;
+    const direction = delta > 0 ? 1 : -1;
+
+    // Only allow moving to the adjacent snap point
+    const nextSnap = currentSnap.current + direction * cardSize;
+    const clamped = Math.max(0, Math.min(1, nextSnap));
+
+    // Only commit if raw scroll has actually reached or passed the next snap
+    if (direction > 0 && raw >= clamped) {
+      currentSnap.current = clamped;
+      snappedProgress.set(clamped);
+    } else if (direction < 0 && raw <= clamped) {
+      currentSnap.current = clamped;
+      snappedProgress.set(clamped);
     }
   });
 
-  // Mobile gesture bridge: Converts Swiper's un-blastable slides to your exact progress percentages
-  const handleMobileSlideChange = (swiper: any) => {
-    if (!isMobile) return;
-    const totalSlides = services.items.length;
-    // Calculate exactly where the scroll timeline should be based on slide index
-    const targetPercentage = swiper.activeIndex / (totalSlides - 1);
-
-    // Smoothly animate the timeline pointer using your beautiful native timings
-    animate(throttledProgress, targetPercentage, {
-      type: "spring",
-      stiffness: 70,
-      damping: 20,
-      mass: 0.8,
-    });
-  };
+  // Spring follows snapped value smoothly for the staircase animation
+  const smoothProgress = useSpring(snappedProgress, {
+    stiffness: 80,
+    damping: 20,
+    mass: 0.5,
+  });
 
   return (
     <section
       id="services"
-      className="w-full py-20 px-4 md:px-8 relative"
+      className="w-full py-20 px-4 md:px-8"
       style={{ backgroundColor: "var(--services-bg)" }}
     >
       <div className="max-w-4xl mx-auto text-center mb-16">
@@ -100,53 +100,26 @@ export default function ServicesSection({ services }: any) {
         </FadeUp>
       </div>
 
-      {/* Main layout frame window */}
+      {/* Tall container — height drives how long the section stays pinned */}
       <div
         ref={containerRef}
-        className="relative w-full max-w-5xl mx-auto h-[220vh] sm:h-[240vh] md:h-[300vh]"
+        className="relative w-full max-w-5xl mx-auto"
+        style={{ height: `${totalCards * 100}vh` }}
       >
-        {/* On mobile, this invisible Swiper captures and filters raw input data */}
-        {isMobile && mounted && (
-          <div className="absolute inset-0 z-50 pointer-events-auto">
-            <Swiper
-              direction={"vertical"}
-              slidesPerView={1}
-              spaceBetween={0}
-              mousewheel={{
-                forceToAxis: true,
-                sensitivity: 1,
-              }}
-              modules={[Mousewheel]}
-              onSlideChange={handleMobileSlideChange}
-              className="w-full h-full"
-            >
-              {services.items.map((item: any) => (
-                <SwiperSlide
-                  key={`gesture-${item.id}`}
-                  className="w-full h-full"
-                />
-              ))}
-            </Swiper>
-          </div>
-        )}
-
-        {/* Your native view viewport with identical code handling */}
-        <div className="sticky top-[80px] md:top-[110px] w-full flex flex-col items-center pointer-events-none">
-          {mounted &&
-            services.items.map((item: any, index: number) => (
-              <div
-                key={item.id}
-                className="w-full pointer-events-auto"
-                style={{ zIndex: index }}
-              >
+        {/* Sticky viewport — cards live here and stay pinned */}
+        <div className="sticky top-0 w-full h-screen flex items-center justify-center">
+          <div className="relative w-full" style={{ height: "460px" }}>
+            {mounted &&
+              services.items.map((item: any, index: number) => (
                 <ServiceCard
+                  key={item.id}
                   item={item}
                   index={index}
-                  totalServiceCards={services.items.length}
-                  progress={throttledProgress}
+                  totalServiceCards={totalCards}
+                  progress={smoothProgress}
                 />
-              </div>
-            ))}
+              ))}
+          </div>
         </div>
       </div>
     </section>
