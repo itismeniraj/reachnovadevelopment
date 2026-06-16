@@ -1,12 +1,7 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
-import {
-  useScroll,
-  useMotionValue,
-  useSpring,
-  useAnimationFrame,
-} from "framer-motion";
+import { useScroll, useSpring } from "framer-motion";
 import { ServiceCard } from "../../ui/ServiceCard";
 import FadeUp from "../../animations/FadeUp";
 
@@ -14,51 +9,21 @@ export default function ServicesSection({ services }: any) {
   const containerRef = useRef<HTMLDivElement>(null);
   const [mounted, setMounted] = useState(false);
 
-  const totalCards = services?.items?.length || 1;
-
   useEffect(() => {
     setMounted(true);
   }, []);
 
+  // Stable scroll progress
   const { scrollYProgress } = useScroll({
     target: containerRef,
     offset: ["start start", "end end"],
   });
 
-  // Snap progress: advances one card threshold at a time
-  const snappedProgress = useMotionValue(0);
-  const lastRaw = useRef(0);
-  const currentSnap = useRef(0);
-
-  useAnimationFrame(() => {
-    const raw = scrollYProgress.get();
-    const delta = raw - lastRaw.current;
-    lastRaw.current = raw;
-
-    if (Math.abs(delta) < 0.0001) return;
-
-    const cardSize = 1 / totalCards;
-    const direction = delta > 0 ? 1 : -1;
-
-    // Only allow moving to the adjacent snap point
-    const nextSnap = currentSnap.current + direction * cardSize;
-    const clamped = Math.max(0, Math.min(1, nextSnap));
-
-    // Only commit if raw scroll has actually reached or passed the next snap
-    if (direction > 0 && raw >= clamped) {
-      currentSnap.current = clamped;
-      snappedProgress.set(clamped);
-    } else if (direction < 0 && raw <= clamped) {
-      currentSnap.current = clamped;
-      snappedProgress.set(clamped);
-    }
-  });
-
-  // Spring follows snapped value smoothly for the staircase animation
-  const smoothProgress = useSpring(snappedProgress, {
-    stiffness: 80,
-    damping: 20,
-    mass: 0.5,
+  // Smooth but NOT self-running animation
+  const progress = useSpring(scrollYProgress, {
+    stiffness: 90,
+    damping: 25,
+    mass: 0.2,
   });
 
   return (
@@ -94,32 +59,28 @@ export default function ServicesSection({ services }: any) {
         </FadeUp>
 
         <FadeUp>
-          <p className="mt-5" style={{ color: "var(--services-text)" }}>
+          <p style={{ color: "var(--services-text)" }}>
             {services.description}
           </p>
         </FadeUp>
       </div>
 
-      {/* Tall container — height drives how long the section stays pinned */}
       <div
         ref={containerRef}
-        className="relative w-full max-w-5xl mx-auto"
-        style={{ height: `${totalCards * 100}vh` }}
+        className="relative h-[220vh] sm:h-[240vh] md:h-[300vh] w-full max-w-5xl mx-auto"
       >
-        {/* Sticky viewport — cards live here and stay pinned */}
-        <div className="sticky top-0 w-full h-screen flex items-center justify-center">
-          <div className="relative w-full" style={{ height: "460px" }}>
-            {mounted &&
-              services.items.map((item: any, index: number) => (
+        <div className="sticky top-[80px] md:top-[110px] w-full flex flex-col items-center">
+          {mounted &&
+            services.items.map((item: any, index: number) => (
+              <div key={item.id} className="w-full" style={{ zIndex: index }}>
                 <ServiceCard
-                  key={item.id}
                   item={item}
                   index={index}
-                  totalServiceCards={totalCards}
-                  progress={smoothProgress}
+                  totalServiceCards={services.items.length}
+                  progress={progress}
                 />
-              ))}
-          </div>
+              </div>
+            ))}
         </div>
       </div>
     </section>
