@@ -29,12 +29,10 @@ export const ServiceCard: React.FC<ServiceCardProps> = ({
     return () => window.removeEventListener("resize", handleResize);
   }, []);
 
-  // Set structural travel intervals per card index
   const startRange = index / totalServiceCards;
   const endRange = (index + 1) / totalServiceCards;
-  const startingY = isMobile ? 500 : 700;
+  const startingY = isMobile ? 600 : 700;
 
-  // Horizontal staircase offset visual gap for stacked card top boundaries
   const staircaseOffset = index * (isMobile ? 16 : 0);
 
   const y = useTransform(
@@ -43,16 +41,18 @@ export const ServiceCard: React.FC<ServiceCardProps> = ({
     [startingY, startingY, staircaseOffset],
   );
 
-  // Sequential Guard: Upcoming card stays opacity 0 until previous card lands halfway
+  // Strict cut-off: keeps upcoming card background hidden completely until its turn to stack comes
   const opacity = useTransform(
     progress,
     [
+      0,
+      Math.max(0, startRange - 0.02),
       startRange,
       startRange + (endRange - startRange) * 0.3,
       Math.min(1, endRange),
       1,
     ],
-    [0, 0, 1, 1],
+    [0, 0, 0, 0, 1, 1],
   );
 
   const finalScale = 1 - (totalServiceCards - 1 - index) * 0.025;
@@ -90,14 +90,14 @@ export const ServiceCard: React.FC<ServiceCardProps> = ({
             ? "brightness(100%)"
             : `brightness(${brightness})`,
         opacity: index === 0 ? 1 : opacity,
-        marginTop: index === 0 ? 0 : "-420px",
+        marginTop: index === 0 ? 0 : isMobile ? "-404px" : "-420px", // Adjusted spacing to match new visibility clipping
         paddingTop: 0,
         backgroundColor: "var(--services-card-bg)",
         border: "1px solid var(--services-card-border)",
       }}
       className="w-full min-h-[420px] md:h-[460px] rounded-3xl flex flex-col md:flex-row overflow-hidden shadow-[0_25px_60px_-20px_rgba(29,49,115,0.25)] origin-top"
     >
-      <div className="relative w-full md:w-1/2 h-60 md:h-full select-none pointer-events-none">
+      <div className="relative w-full md:w-1/2 h-52 sm:h-60 md:h-full select-none pointer-events-none">
         <Image
           src={item.image}
           alt={item.title}
@@ -115,30 +115,30 @@ export const ServiceCard: React.FC<ServiceCardProps> = ({
       </div>
 
       <div
-        className="w-full md:w-1/2 flex flex-col justify-center p-6 sm:p-8 md:p-10 lg:p-12 select-none"
+        className="w-full md:w-1/2 flex flex-col justify-center p-6 sm:p-8 md:p-10 select-none"
         style={{ backgroundColor: "var(--services-card-bg)" }}
       >
         <div>
           <h3
-            className="text-2xl sm:text-3xl md:text-4xl font-bold leading-tight"
+            className="text-xl sm:text-3xl md:text-4xl font-bold leading-tight"
             style={{ color: "var(--services-title)" }}
           >
             {item.title}
           </h3>
 
           <p
-            className="mt-4 text-sm sm:text-base md:text-lg leading-relaxed"
+            className="mt-3 text-xs sm:text-base md:text-lg leading-relaxed line-clamp-4 sm:line-clamp-none"
             style={{ color: "var(--services-text)" }}
           >
             {item.description}
           </p>
         </div>
 
-        <div className="mt-6 flex flex-wrap gap-2">
+        <div className="mt-5 flex flex-wrap gap-2">
           {item.features.map((f, i) => (
             <span
               key={i}
-              className="px-3 py-1 text-xs sm:text-sm font-semibold rounded-full border"
+              className="px-2.5 py-0.5 text-xs sm:text-sm font-semibold rounded-full border"
               style={{
                 backgroundColor: "var(--services-feature-bg)",
                 color: "var(--services-feature-text)",
