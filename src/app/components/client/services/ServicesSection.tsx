@@ -1,123 +1,165 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
-import {
-  useScroll,
-  useMotionValue,
-  useVelocity,
-  useAnimationFrame,
-} from "framer-motion";
-import { ServiceCard } from "../../ui/ServiceCard";
 import FadeUp from "../../animations/FadeUp";
+import { ServiceCard } from "../../ui/ServiceCard";
+
+import { Swiper, SwiperSlide } from "swiper/react";
+import { Mousewheel } from "swiper/modules";
+
+import "swiper/css";
 
 export default function ServicesSection({ services }: any) {
-  const containerRef = useRef<HTMLDivElement>(null);
-  const [mounted, setMounted] = useState(false);
-  const [isMobile, setIsMobile] = useState(false);
+  const sectionRef = useRef<HTMLDivElement>(null);
+  const swiperRef = useRef<any>(null);
+  const isAnimatingRef = useRef(false);
+
+  const [activeCard, setActiveCard] = useState(0);
 
   useEffect(() => {
-    setMounted(true);
-    const handleResize = () => setIsMobile(window.innerWidth < 768);
-    handleResize();
-    window.addEventListener("resize", handleResize);
-    return () => window.removeEventListener("resize", handleResize);
-  }, []);
+    const handleWheel = (e: WheelEvent) => {
+      if (!swiperRef.current || !sectionRef.current) return;
 
-  // 1. Get raw scroll progress
-  const { scrollYProgress } = useScroll({
-    target: containerRef,
-    offset: ["start start", "end end"],
-  });
+      const rect = sectionRef.current.getBoundingClientRect();
 
-  // 2. Custom throttle container for mobile velocity control
-  const throttledProgress = useMotionValue(0);
-  const scrollVelocity = useVelocity(scrollYProgress);
+      const isPinned = rect.top <= 0 && rect.bottom >= window.innerHeight;
 
-  useAnimationFrame((_, delta) => {
-    const raw = scrollYProgress.get();
-    const currentThrottled = throttledProgress.get();
+      if (!isPinned) return;
 
-    if (!isMobile) {
-      // Desktop bypass: Keep standard native behavior
-      throttledProgress.set(raw);
-      return;
-    }
+      const swiper = swiperRef.current;
 
-    const diff = raw - currentThrottled;
-    if (Math.abs(diff) < 0.001) {
-      throttledProgress.set(raw);
-      return;
-    }
+      const isFirst = swiper.activeIndex === 0;
 
-    // Capture speed data and set a maximum progress jump per frame (Delta target calculation)
-    const velocity = Math.abs(scrollVelocity.get());
-    const isBlastScrolling = velocity > 1.5;
+      const isLast = swiper.activeIndex === services.items.length - 1;
 
-    // Strict speed limits: forces a beautiful, steady interpolation transition even under fast flicks
-    const maxStepPerFrame = isBlastScrolling ? 0.008 : 0.02;
-    const step =
-      Math.sign(diff) *
-      Math.min(Math.abs(diff), maxStepPerFrame * (delta / 16.66));
+      if (isAnimatingRef.current) {
+        e.preventDefault();
+        return;
+      }
 
-    throttledProgress.set(currentThrottled + step);
-  });
+      if (e.deltaY > 0) {
+        if (!isLast) {
+          e.preventDefault();
+
+          isAnimatingRef.current = true;
+
+          swiper.slideNext();
+
+          setTimeout(() => {
+            isAnimatingRef.current = false;
+          }, 800);
+        }
+      } else {
+        if (!isFirst) {
+          e.preventDefault();
+
+          isAnimatingRef.current = true;
+
+          swiper.slidePrev();
+
+          setTimeout(() => {
+            isAnimatingRef.current = false;
+          }, 800);
+        }
+      }
+    };
+
+    window.addEventListener("wheel", handleWheel, {
+      passive: false,
+    });
+
+    return () => {
+      window.removeEventListener("wheel", handleWheel);
+    };
+  }, [services.items.length]);
 
   return (
     <section
       id="services"
-      className="w-full py-20 px-4 md:px-8"
-      style={{ backgroundColor: "var(--services-bg)" }}
+      ref={sectionRef}
+      className="relative w-full"
+      style={{
+        height: `${services.items.length * 100}vh`,
+        backgroundColor: "var(--services-bg)",
+      }}
     >
-      <div className="max-w-4xl mx-auto text-center mb-16">
-        <FadeUp>
-          <span
-            className="px-4 py-2 text-xs font-bold uppercase rounded-full border"
-            style={{
-              backgroundColor: "var(--services-badge-bg)",
-              color: "var(--services-badge-text)",
-              borderColor: "var(--services-badge-border)",
-            }}
-          >
-            {services.badge}
-          </span>
-        </FadeUp>
-
-        <FadeUp>
-          <h2
-            className="mt-6 text-3xl sm:text-5xl font-black"
-            style={{ color: "var(--services-title)" }}
-          >
-            {services.title}{" "}
-            <span style={{ color: "var(--services-accent)" }}>
-              {services.highlight}
+      <div className="sticky top-0 h-screen flex flex-col justify-center px-4 md:px-8">
+        <div className="max-w-4xl mx-auto text-center mb-16">
+          <FadeUp>
+            <span
+              className="px-4 py-2 text-xs font-bold uppercase rounded-full border"
+              style={{
+                backgroundColor: "var(--services-badge-bg)",
+                color: "var(--services-badge-text)",
+                borderColor: "var(--services-badge-border)",
+              }}
+            >
+              {services.badge}
             </span>
-          </h2>
-        </FadeUp>
+          </FadeUp>
 
-        <FadeUp>
-          <p className="mt-5" style={{ color: "var(--services-text)" }}>
-            {services.description}
-          </p>
-        </FadeUp>
-      </div>
+          <FadeUp>
+            <h2
+              className="mt-6 text-3xl sm:text-5xl font-black"
+              style={{
+                color: "var(--services-title)",
+              }}
+            >
+              {services.title}{" "}
+              <span
+                style={{
+                  color: "var(--services-accent)",
+                }}
+              >
+                {services.highlight}
+              </span>
+            </h2>
+          </FadeUp>
 
-      {/* Sticky Scroll Container Track */}
-      <div
-        ref={containerRef}
-        className="relative h-[220vh] sm:h-[240vh] md:h-[300vh] w-full max-w-5xl mx-auto"
-      >
-        <div className="sticky top-[80px] md:top-[110px] w-full flex flex-col items-center">
-          {mounted &&
-            services.items.map((item: any, index: number) => (
-              <div key={item.id} className="w-full" style={{ zIndex: index }}>
-                <ServiceCard
-                  item={item}
-                  index={index}
-                  totalServiceCards={services.items.length}
-                  progress={throttledProgress} // Fed controlled timeline progress instead of erratic scrolling jumps
-                />
-              </div>
-            ))}
+          <FadeUp>
+            <p
+              className="mt-5"
+              style={{
+                color: "var(--services-text)",
+              }}
+            >
+              {services.description}
+            </p>
+          </FadeUp>
+        </div>
+
+        {/* Hidden Swiper Controller */}
+        <Swiper
+          className="hidden"
+          onSwiper={(swiper) => {
+            swiperRef.current = swiper;
+          }}
+          onSlideChange={(swiper) => {
+            setActiveCard(swiper.activeIndex);
+          }}
+          direction="vertical"
+          slidesPerView={1}
+          allowTouchMove={false}
+          speed={800}
+          mousewheel={false}
+          modules={[Mousewheel]}
+        >
+          {services.items.map((item: any) => (
+            <SwiperSlide key={item.id} />
+          ))}
+        </Swiper>
+
+        {/* Stacked Cards */}
+        <div className="relative max-w-5xl mx-auto w-full">
+          {services.items.map((item: any, index: number) => (
+            <ServiceCard
+              key={item.id}
+              item={item}
+              index={index}
+              totalServiceCards={services.items.length}
+              activeCard={activeCard}
+            />
+          ))}
         </div>
       </div>
     </section>
