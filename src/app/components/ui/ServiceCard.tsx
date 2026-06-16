@@ -8,7 +8,6 @@ interface ServiceCardProps {
   item: ServiceItem;
   index: number;
   activeIndex: number;
-  totalServiceCards: number;
 }
 
 export const ServiceCard: React.FC<ServiceCardProps> = ({
@@ -39,18 +38,17 @@ export const ServiceCard: React.FC<ServiceCardProps> = ({
     );
   }
 
-  const isPast = index < activeIndex;
-  const isActive = index === activeIndex;
+  const progress = Math.max(0, activeIndex - index);
 
   const staircaseOffset = index * (isMobile ? 12 : 16);
 
-  const scale = isPast ? 1 - (activeIndex - index) * 0.025 : 1;
-  const brightness = isPast ? `${100 - (activeIndex - index) * 8}%` : "100%";
+  const scale = 1 - progress * 0.03;
+  const brightness = 100 - progress * 10;
 
   let targetY = isMobile ? 650 : 850;
   let opacity = 0;
 
-  if (isPast || isActive) {
+  if (index <= activeIndex) {
     targetY = staircaseOffset;
     opacity = 1;
   }
@@ -65,7 +63,7 @@ export const ServiceCard: React.FC<ServiceCardProps> = ({
         width: "100%",
         transform: `translateY(${targetY}px) scale(${scale})`,
         opacity: opacity,
-        filter: isMobile ? "brightness(100%)" : `brightness(${brightness})`,
+        filter: isMobile ? "brightness(100%)" : `brightness(${brightness}%)`,
         transition:
           "transform 0.6s cubic-bezier(0.25, 1, 0.5, 1), opacity 0.35s ease, filter 0.4s ease",
         transformOrigin: "top center",
@@ -95,21 +93,19 @@ export const ServiceCard: React.FC<ServiceCardProps> = ({
         className="w-full md:w-1/2 flex flex-col justify-center p-5 sm:p-8 md:p-10 select-none"
         style={{ backgroundColor: "var(--services-card-bg)" }}
       >
-        <div>
-          <h3
-            className="text-lg sm:text-2xl md:text-3xl font-bold leading-tight"
-            style={{ color: "var(--services-title)" }}
-          >
-            {item.title}
-          </h3>
+        <h3
+          className="text-lg sm:text-2xl md:text-3xl font-bold leading-tight"
+          style={{ color: "var(--services-title)" }}
+        >
+          {item.title}
+        </h3>
 
-          <p
-            className="mt-2 text-xs sm:text-base md:text-md leading-relaxed line-clamp-3 sm:line-clamp-none"
-            style={{ color: "var(--services-text)" }}
-          >
-            {item.description}
-          </p>
-        </div>
+        <p
+          className="mt-2 text-xs sm:text-base md:text-md leading-relaxed line-clamp-3 sm:line-clamp-none"
+          style={{ color: "var(--services-text)" }}
+        >
+          {item.description}
+        </p>
 
         <div className="mt-4 flex flex-wrap gap-1.5">
           {item.features.map((f, i) => (
