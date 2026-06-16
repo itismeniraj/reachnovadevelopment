@@ -1,19 +1,22 @@
 "use client";
 
 import { ServiceItem } from "../../types/site";
+import { motion, MotionValue, useTransform } from "framer-motion";
 import Image from "next/image";
 import { useEffect, useState } from "react";
 
 interface ServiceCardProps {
   item: ServiceItem;
   index: number;
-  activeIndex: number;
+  totalServiceCards: number;
+  progress: MotionValue<number>;
 }
 
 export const ServiceCard: React.FC<ServiceCardProps> = ({
   item,
   index,
-  activeIndex,
+  totalServiceCards,
+  progress,
 }) => {
   const [mounted, setMounted] = useState(false);
   const [isMobile, setIsMobile] = useState(false);
@@ -26,10 +29,48 @@ export const ServiceCard: React.FC<ServiceCardProps> = ({
     return () => window.removeEventListener("resize", handleResize);
   }, []);
 
+  const startRange = index / totalServiceCards;
+  const endRange = (index + 1) / totalServiceCards;
+  const startingY = isMobile ? 600 : 700;
+
+  const staircaseOffset = index * (isMobile ? 16 : 0);
+
+  const y = useTransform(
+    progress,
+    [0, startRange, Math.min(1, endRange)],
+    [startingY, startingY, staircaseOffset],
+  );
+
+  // Strict cut-off: keeps upcoming card background hidden completely until its turn to stack comes
+  const opacity = useTransform(
+    progress,
+    [
+      0,
+      Math.max(0, startRange - 0.02),
+      startRange,
+      startRange + (endRange - startRange) * 0.3,
+      Math.min(1, endRange),
+      1,
+    ],
+    [0, 0, 0, 0, 1, 1],
+  );
+
+  const finalScale = 1 - (totalServiceCards - 1 - index) * 0.025;
+  const scale = useTransform(
+    progress,
+    [endRange, endRange + 0.1],
+    [1, finalScale],
+  );
+  const brightness = useTransform(
+    progress,
+    [endRange, endRange + 0.1],
+    ["100%", "80%"],
+  );
+
   if (!mounted) {
     return (
       <div
-        className="w-full h-full rounded-3xl border"
+        className="w-full h-[420px] rounded-3xl border"
         style={{
           backgroundColor: "var(--services-card-bg)",
           borderColor: "var(--services-card-border)",
@@ -38,41 +79,25 @@ export const ServiceCard: React.FC<ServiceCardProps> = ({
     );
   }
 
-  const progress = Math.max(0, activeIndex - index);
-
-  const staircaseOffset = index * (isMobile ? 12 : 16);
-
-  const scale = 1 - progress * 0.03;
-  const brightness = 100 - progress * 10;
-
-  let targetY = isMobile ? 650 : 850;
-  let opacity = 0;
-
-  if (index <= activeIndex) {
-    targetY = staircaseOffset;
-    opacity = 1;
-  }
-
   return (
-    <div
+    <motion.div
       style={{
-        zIndex: index,
-        position: "absolute",
-        top: 0,
-        left: 0,
-        width: "100%",
-        transform: `translateY(${targetY}px) scale(${scale})`,
-        opacity: opacity,
-        filter: isMobile ? "brightness(100%)" : `brightness(${brightness}%)`,
-        transition:
-          "transform 0.6s cubic-bezier(0.25, 1, 0.5, 1), opacity 0.35s ease, filter 0.4s ease",
-        transformOrigin: "top center",
+        y: index === 0 ? staircaseOffset : y,
+        scale: isMobile ? 1 : index === totalServiceCards - 1 ? 1 : scale,
+        filter: isMobile
+          ? "brightness(100%)"
+          : index === totalServiceCards - 1
+            ? "brightness(100%)"
+            : `brightness(${brightness})`,
+        opacity: index === 0 ? 1 : opacity,
+        marginTop: index === 0 ? 0 : isMobile ? "-404px" : "-420px", // Adjusted spacing to match new visibility clipping
+        paddingTop: 0,
         backgroundColor: "var(--services-card-bg)",
         border: "1px solid var(--services-card-border)",
       }}
-      className="w-full h-[440px] sm:h-[420px] md:h-[460px] rounded-3xl flex flex-col md:flex-row overflow-hidden shadow-[0_25px_60px_-20px_rgba(29,49,115,0.25)]"
+      className="w-full min-h-[420px] md:h-[460px] rounded-3xl flex flex-col md:flex-row overflow-hidden shadow-[0_25px_60px_-20px_rgba(29,49,115,0.25)] origin-top"
     >
-      <div className="relative w-full md:w-1/2 h-44 sm:h-48 md:h-full select-none pointer-events-none">
+      <div className="relative w-full md:w-1/2 h-52 sm:h-60 md:h-full select-none pointer-events-none">
         <Image
           src={item.image}
           alt={item.title}
@@ -90,28 +115,30 @@ export const ServiceCard: React.FC<ServiceCardProps> = ({
       </div>
 
       <div
-        className="w-full md:w-1/2 flex flex-col justify-center p-5 sm:p-8 md:p-10 select-none"
+        className="w-full md:w-1/2 flex flex-col justify-center p-6 sm:p-8 md:p-10 select-none"
         style={{ backgroundColor: "var(--services-card-bg)" }}
       >
-        <h3
-          className="text-lg sm:text-2xl md:text-3xl font-bold leading-tight"
-          style={{ color: "var(--services-title)" }}
-        >
-          {item.title}
-        </h3>
+        <div>
+          <h3
+            className="text-xl sm:text-3xl md:text-4xl font-bold leading-tight"
+            style={{ color: "var(--services-title)" }}
+          >
+            {item.title}
+          </h3>
 
-        <p
-          className="mt-2 text-xs sm:text-base md:text-md leading-relaxed line-clamp-3 sm:line-clamp-none"
-          style={{ color: "var(--services-text)" }}
-        >
-          {item.description}
-        </p>
+          <p
+            className="mt-3 text-xs sm:text-base md:text-lg leading-relaxed line-clamp-4 sm:line-clamp-none"
+            style={{ color: "var(--services-text)" }}
+          >
+            {item.description}
+          </p>
+        </div>
 
-        <div className="mt-4 flex flex-wrap gap-1.5">
+        <div className="mt-5 flex flex-wrap gap-2">
           {item.features.map((f, i) => (
             <span
               key={i}
-              className="px-2.5 py-0.5 text-[10px] sm:text-sm font-semibold rounded-full border"
+              className="px-2.5 py-0.5 text-xs sm:text-sm font-semibold rounded-full border"
               style={{
                 backgroundColor: "var(--services-feature-bg)",
                 color: "var(--services-feature-text)",
@@ -123,6 +150,6 @@ export const ServiceCard: React.FC<ServiceCardProps> = ({
           ))}
         </div>
       </div>
-    </div>
+    </motion.div>
   );
 };
