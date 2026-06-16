@@ -41,7 +41,6 @@ export const ServiceCard: React.FC<ServiceCardProps> = ({
     [startingY, startingY, staircaseOffset],
   );
 
-  // Strict cut-off: keeps upcoming card background hidden completely until its turn to stack comes
   const opacity = useTransform(
     progress,
     [
@@ -90,7 +89,7 @@ export const ServiceCard: React.FC<ServiceCardProps> = ({
             ? "brightness(100%)"
             : `brightness(${brightness})`,
         opacity: index === 0 ? 1 : opacity,
-        marginTop: index === 0 ? 0 : isMobile ? "-404px" : "-420px", // Adjusted spacing to match new visibility clipping
+        marginTop: index === 0 ? 0 : isMobile ? "-404px" : "-420px",
         paddingTop: 0,
         backgroundColor: "var(--services-card-bg)",
         border: "1px solid var(--services-card-border)",

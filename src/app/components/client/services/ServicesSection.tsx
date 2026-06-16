@@ -6,9 +6,15 @@ import {
   useMotionValue,
   useVelocity,
   useAnimationFrame,
+  animate,
 } from "framer-motion";
 import { ServiceCard } from "../../ui/ServiceCard";
 import FadeUp from "../../animations/FadeUp";
+
+// Import Swiper for our mobile event interceptor
+import { Swiper, SwiperSlide } from "swiper/react";
+import { Mousewheel } from "swiper/modules";
+import "swiper/css";
 
 export default function ServicesSection({ services }: any) {
   const containerRef = useRef<HTMLDivElement>(null);
@@ -23,49 +29,42 @@ export default function ServicesSection({ services }: any) {
     return () => window.removeEventListener("resize", handleResize);
   }, []);
 
-  // 1. Get raw scroll progress
+  // Native desktop scrolling track progress
   const { scrollYProgress } = useScroll({
     target: containerRef,
     offset: ["start start", "end end"],
   });
 
-  // 2. Custom throttle container for mobile velocity control
+  // The unified timeline variable fed straight to your original card logic
   const throttledProgress = useMotionValue(0);
-  const scrollVelocity = useVelocity(scrollYProgress);
 
-  useAnimationFrame((_, delta) => {
-    const raw = scrollYProgress.get();
-    const currentThrottled = throttledProgress.get();
-
+  // Desktop bypass loop
+  useAnimationFrame(() => {
     if (!isMobile) {
-      // Desktop bypass: Keep standard native behavior
-      throttledProgress.set(raw);
-      return;
+      throttledProgress.set(scrollYProgress.get());
     }
-
-    const diff = raw - currentThrottled;
-    if (Math.abs(diff) < 0.001) {
-      throttledProgress.set(raw);
-      return;
-    }
-
-    // Capture speed data and set a maximum progress jump per frame (Delta target calculation)
-    const velocity = Math.abs(scrollVelocity.get());
-    const isBlastScrolling = velocity > 1.5;
-
-    // Strict speed limits: forces a beautiful, steady interpolation transition even under fast flicks
-    const maxStepPerFrame = isBlastScrolling ? 0.008 : 0.02;
-    const step =
-      Math.sign(diff) *
-      Math.min(Math.abs(diff), maxStepPerFrame * (delta / 16.66));
-
-    throttledProgress.set(currentThrottled + step);
   });
+
+  // Mobile gesture bridge: Converts Swiper's un-blastable slides to your exact progress percentages
+  const handleMobileSlideChange = (swiper: any) => {
+    if (!isMobile) return;
+    const totalSlides = services.items.length;
+    // Calculate exactly where the scroll timeline should be based on slide index
+    const targetPercentage = swiper.activeIndex / (totalSlides - 1);
+
+    // Smoothly animate the timeline pointer using your beautiful native timings
+    animate(throttledProgress, targetPercentage, {
+      type: "spring",
+      stiffness: 70,
+      damping: 20,
+      mass: 0.8,
+    });
+  };
 
   return (
     <section
       id="services"
-      className="w-full py-20 px-4 md:px-8"
+      className="w-full py-20 px-4 md:px-8 relative"
       style={{ backgroundColor: "var(--services-bg)" }}
     >
       <div className="max-w-4xl mx-auto text-center mb-16">
@@ -101,20 +100,50 @@ export default function ServicesSection({ services }: any) {
         </FadeUp>
       </div>
 
-      {/* Sticky Scroll Container Track */}
+      {/* Main layout frame window */}
       <div
         ref={containerRef}
-        className="relative h-[220vh] sm:h-[240vh] md:h-[300vh] w-full max-w-5xl mx-auto"
+        className="relative w-full max-w-5xl mx-auto h-[220vh] sm:h-[240vh] md:h-[300vh]"
       >
-        <div className="sticky top-[80px] md:top-[110px] w-full flex flex-col items-center">
+        {/* On mobile, this invisible Swiper captures and filters raw input data */}
+        {isMobile && mounted && (
+          <div className="absolute inset-0 z-50 pointer-events-auto">
+            <Swiper
+              direction={"vertical"}
+              slidesPerView={1}
+              spaceBetween={0}
+              mousewheel={{
+                forceToAxis: true,
+                sensitivity: 1,
+              }}
+              modules={[Mousewheel]}
+              onSlideChange={handleMobileSlideChange}
+              className="w-full h-full"
+            >
+              {services.items.map((item: any) => (
+                <SwiperSlide
+                  key={`gesture-${item.id}`}
+                  className="w-full h-full"
+                />
+              ))}
+            </Swiper>
+          </div>
+        )}
+
+        {/* Your native view viewport with identical code handling */}
+        <div className="sticky top-[80px] md:top-[110px] w-full flex flex-col items-center pointer-events-none">
           {mounted &&
             services.items.map((item: any, index: number) => (
-              <div key={item.id} className="w-full" style={{ zIndex: index }}>
+              <div
+                key={item.id}
+                className="w-full pointer-events-auto"
+                style={{ zIndex: index }}
+              >
                 <ServiceCard
                   item={item}
                   index={index}
                   totalServiceCards={services.items.length}
-                  progress={throttledProgress} // Fed controlled timeline progress instead of erratic scrolling jumps
+                  progress={throttledProgress}
                 />
               </div>
             ))}
