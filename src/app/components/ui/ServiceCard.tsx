@@ -10,7 +10,6 @@ interface ServiceCardProps {
   index: number;
   totalServiceCards: number;
   progress: MotionValue<number>;
-  activeMobileIndex: number;
 }
 
 export const ServiceCard: React.FC<ServiceCardProps> = ({
@@ -18,33 +17,45 @@ export const ServiceCard: React.FC<ServiceCardProps> = ({
   index,
   totalServiceCards,
   progress,
-  activeMobileIndex,
 }) => {
   const [mounted, setMounted] = useState(false);
   const [isMobile, setIsMobile] = useState(false);
 
   useEffect(() => {
     setMounted(true);
-  }, []);
-
-  useEffect(() => {
     const handleResize = () => setIsMobile(window.innerWidth < 768);
     handleResize();
     window.addEventListener("resize", handleResize);
     return () => window.removeEventListener("resize", handleResize);
   }, []);
 
+  // Set structural travel intervals per card index
   const startRange = index / totalServiceCards;
   const endRange = (index + 1) / totalServiceCards;
-  const desktopStartingY = 600;
+  const startingY = isMobile ? 500 : 700;
 
-  const desktopY = useTransform(
+  // Horizontal staircase offset visual gap for stacked card top boundaries
+  const staircaseOffset = index * (isMobile ? 16 : 0);
+
+  const y = useTransform(
     progress,
     [0, startRange, Math.min(1, endRange)],
-    [desktopStartingY, desktopStartingY, 0],
+    [startingY, startingY, staircaseOffset],
   );
 
-  const finalScale = 1 - (totalServiceCards - 1 - index) * 0.03;
+  // Sequential Guard: Upcoming card stays opacity 0 until previous card lands halfway
+  const opacity = useTransform(
+    progress,
+    [
+      startRange,
+      startRange + (endRange - startRange) * 0.3,
+      Math.min(1, endRange),
+      1,
+    ],
+    [0, 0, 1, 1],
+  );
+
+  const finalScale = 1 - (totalServiceCards - 1 - index) * 0.025;
   const scale = useTransform(
     progress,
     [endRange, endRange + 0.1],
@@ -53,7 +64,7 @@ export const ServiceCard: React.FC<ServiceCardProps> = ({
   const brightness = useTransform(
     progress,
     [endRange, endRange + 0.1],
-    ["100%", "75%"],
+    ["100%", "80%"],
   );
 
   if (!mounted) {
@@ -68,51 +79,18 @@ export const ServiceCard: React.FC<ServiceCardProps> = ({
     );
   }
 
-  const isStackedMobile = isMobile && index <= activeMobileIndex;
-
-  const mobileStaircaseOffset = index * 20;
-
   return (
     <motion.div
-      initial={
-        isMobile
-          ? {
-              y: index === 0 ? mobileStaircaseOffset : 800,
-              opacity: index === 0 ? 1 : 0,
-            }
-          : false
-      }
-      animate={
-        isMobile
-          ? {
-              y: isStackedMobile ? mobileStaircaseOffset : 800,
-              opacity: isStackedMobile ? 1 : 0,
-            }
-          : {}
-      }
-      transition={{
-        type: "spring",
-        stiffness: 240,
-        damping: 28,
-        mass: 1,
-      }}
       style={{
-        ...(isMobile ? {} : { y: index === 0 ? 0 : desktopY }),
+        y: index === 0 ? staircaseOffset : y,
         scale: isMobile ? 1 : index === totalServiceCards - 1 ? 1 : scale,
         filter: isMobile
           ? "brightness(100%)"
           : index === totalServiceCards - 1
             ? "brightness(100%)"
             : `brightness(${brightness})`,
-        opacity: isMobile ? undefined : 1,
-        position: isMobile
-          ? index === 0
-            ? "relative"
-            : "absolute"
-          : "relative",
-        top: isMobile ? 0 : undefined,
-        left: isMobile ? 0 : undefined,
-        marginTop: isMobile ? 0 : index === 0 ? 0 : "-420px",
+        opacity: index === 0 ? 1 : opacity,
+        marginTop: index === 0 ? 0 : "-420px",
         paddingTop: 0,
         backgroundColor: "var(--services-card-bg)",
         border: "1px solid var(--services-card-border)",

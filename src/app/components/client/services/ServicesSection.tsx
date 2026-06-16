@@ -7,56 +7,16 @@ import FadeUp from "../../animations/FadeUp";
 
 export default function ServicesSection({ services }: any) {
   const containerRef = useRef<HTMLDivElement>(null);
-  const [isMobile, setIsMobile] = useState(false);
-  const [activeMobileIndex, setActiveMobileIndex] = useState(0);
-  const touchStartY = useRef(0);
+  const [mounted, setMounted] = useState(false);
 
   useEffect(() => {
-    const handleResize = () => setIsMobile(window.innerWidth < 768);
-    handleResize();
-    window.addEventListener("resize", handleResize);
-    return () => window.removeEventListener("resize", handleResize);
+    setMounted(true);
   }, []);
 
   const { scrollYProgress } = useScroll({
     target: containerRef,
     offset: ["start start", "end end"],
   });
-
-  const handleTouchStart = (e: React.TouchEvent) => {
-    if (!isMobile) return;
-    touchStartY.current = e.touches[0].clientY;
-  };
-
-  const handleTouchMove = (e: React.TouchEvent) => {
-    if (!isMobile) return;
-
-    const currentY = e.touches[0].clientY;
-    const diffY = touchStartY.current - currentY;
-
-    if (diffY > 10 && activeMobileIndex < services.items.length - 1) {
-      if (e.cancelable) e.preventDefault();
-    } else if (diffY < -10 && activeMobileIndex > 0) {
-      if (e.cancelable) e.preventDefault();
-    }
-  };
-
-  const handleTouchEnd = (e: React.TouchEvent) => {
-    if (!isMobile) return;
-
-    const currentY = e.changedTouches[0].clientY;
-    const diffY = touchStartY.current - currentY;
-
-    if (diffY > 40) {
-      setActiveMobileIndex((prev) =>
-        Math.min(services.items.length - 1, prev + 1),
-      );
-    } else if (diffY < -40) {
-      setActiveMobileIndex((prev) => Math.max(0, prev - 1));
-    }
-  };
-
-  const mobileContainerHeight = 440 + services.items.length * 16;
 
   return (
     <section
@@ -97,39 +57,23 @@ export default function ServicesSection({ services }: any) {
         </FadeUp>
       </div>
 
+      {/* Sticky Scroll Container Track */}
       <div
         ref={containerRef}
-        onTouchStart={handleTouchStart}
-        onTouchMove={handleTouchMove}
-        onTouchEnd={handleTouchEnd}
-        className={
-          isMobile
-            ? "relative w-full max-w-5xl mx-auto"
-            : "relative h-[140vh] sm:h-[180vh] md:h-[260vh] w-full max-w-5xl mx-auto"
-        }
-        style={{
-          touchAction: isMobile ? "pan-x" : "auto",
-          height: isMobile ? `${mobileContainerHeight}px` : undefined,
-        }}
+        className="relative h-[200vh] sm:h-[240vh] md:h-[300vh] w-full max-w-5xl mx-auto"
       >
-        <div
-          className={
-            isMobile
-              ? "relative w-full flex flex-col items-center"
-              : "sticky top-[80px] md:top-[110px] w-full flex flex-col items-center"
-          }
-        >
-          {services.items.map((item: any, index: number) => (
-            <div key={item.id} className="w-full" style={{ zIndex: index }}>
-              <ServiceCard
-                item={item}
-                index={index}
-                totalServiceCards={services.items.length}
-                progress={scrollYProgress}
-                activeMobileIndex={activeMobileIndex}
-              />
-            </div>
-          ))}
+        <div className="sticky top-[80px] md:top-[110px] w-full flex flex-col items-center">
+          {mounted &&
+            services.items.map((item: any, index: number) => (
+              <div key={item.id} className="w-full" style={{ zIndex: index }}>
+                <ServiceCard
+                  item={item}
+                  index={index}
+                  totalServiceCards={services.items.length}
+                  progress={scrollYProgress}
+                />
+              </div>
+            ))}
         </div>
       </div>
     </section>
